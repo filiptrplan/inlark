@@ -214,8 +214,14 @@ jobs:
           test -f "$RUNNER_TEMP/inlark-profile/share/applications/inlark.desktop"
           test -f "$RUNNER_TEMP/inlark-profile/share/icons/hicolor/512x512/apps/inlark.png"
 
+  flatpak:
+    needs: validate-tag
+    uses: ./.github/workflows/flatpak.yml
+    with:
+      version: ${{ github.ref_name }}
+
   release:
-    needs: [build, nix]
+    needs: [build, nix, flatpak]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -237,6 +243,7 @@ jobs:
             echo "Expected 8 installers, found $count" >&2
             exit 1
           fi
+          test -f "release-assets/inlark-${RELEASE_TAG#v}-x64.flatpak"
           channel="${RELEASE_TAG#v}"
           if [[ "$channel" == *-* ]]; then
             channel="${channel#*-}"

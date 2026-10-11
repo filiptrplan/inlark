@@ -116,6 +116,33 @@ function steps({ build, file }: Download): Step[] {
         connect,
       ]
     }
+    case 'flatpak':
+      return [
+        {
+          title: 'Install the bundle',
+          body: 'Needs Flatpak installed on your system. Confirm adding Flathub for the shared runtime when asked.',
+          visual: (
+            <CodeBlock
+              code={`cd ~/Downloads\nflatpak install --user ./${file}`}
+              title="Terminal"
+              className="h-full"
+            />
+          ),
+        },
+        {
+          title: 'Open inlark',
+          body: (
+            <>
+              Find it in your app menu. To update, download the new bundle and install it with{' '}
+              <Path>flatpak install --user --reinstall</Path>. Your accounts and drafts stay saved.
+            </>
+          ),
+          visual: (
+            <CodeBlock code="flatpak run com.inlark.Inlark" title="Terminal" className="h-full" />
+          ),
+        },
+        connect,
+      ]
     case 'nix':
       return [
         {

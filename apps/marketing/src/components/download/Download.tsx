@@ -36,9 +36,10 @@ const alternatives: Record<BuildId, BuildId[]> = {
   'mac-arm64': ['mac-x64'],
   'mac-x64': ['mac-arm64'],
   windows: [],
-  appimage: ['deb', 'rpm', 'nix'],
-  deb: ['appimage', 'rpm', 'nix'],
-  rpm: ['appimage', 'deb', 'nix'],
+  appimage: ['deb', 'rpm', 'flatpak', 'nix'],
+  deb: ['appimage', 'rpm', 'flatpak', 'nix'],
+  rpm: ['appimage', 'deb', 'flatpak', 'nix'],
+  flatpak: ['appimage', 'deb', 'rpm'],
   nix: ['nixos', 'appimage'],
   nixos: ['nix', 'appimage'],
 }
@@ -50,6 +51,7 @@ const alternativeLabel: Record<BuildId, string> = {
   appimage: 'AppImage',
   deb: '.deb',
   rpm: '.rpm',
+  flatpak: 'Flatpak',
   nix: 'Nix',
   nixos: 'NixOS',
 }

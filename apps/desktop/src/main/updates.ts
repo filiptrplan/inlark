@@ -34,7 +34,8 @@ export class UpdateManager {
   }
 
   start() {
-    if (!app.isPackaged) return
+    // Flatpak's /app is immutable. Bundle users install updates through Flatpak.
+    if (!app.isPackaged || process.env.FLATPAK_ID) return
     autoUpdater.autoDownload = true
     autoUpdater.autoInstallOnAppQuit = true
     autoUpdater.autoRunAppAfterInstall = false

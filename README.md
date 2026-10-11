@@ -57,13 +57,28 @@ If you run your own mail server, or just have a few accounts at small providers,
 
 Grab the latest build from the [releases page](https://github.com/inlark/inlark/releases/latest):
 
-Packaged builds check for updates in the background. When an update downloads successfully, inlark installs it after you quit, so it never interrupts your work. If the automatic update fails, inlark links to the [download page](https://inlark.com/download) for a manual install.
+Native installers check for updates in the background. When an update downloads successfully, inlark installs it after you quit, so it never interrupts your work. If the automatic update fails, inlark links to the [download page](https://inlark.com/download) for a manual install. Flatpak and Nix installations use the update steps below.
 
-| Platform | Download                                                   |
-| -------- | ---------------------------------------------------------- |
-| Windows  | Installer (x64)                                            |
-| macOS    | DMG or ZIP, for both Apple Silicon and Intel               |
-| Linux    | AppImage, `.deb` or `.rpm` (x64), or [Nix](#nix-and-nixos) |
+| Platform | Download                                                                        |
+| -------- | ------------------------------------------------------------------------------- |
+| Windows  | Installer (x64)                                                                 |
+| macOS    | DMG or ZIP, for both Apple Silicon and Intel                                    |
+| Linux    | AppImage, `.deb`, `.rpm` or [Flatpak](#flatpak) (x64), or [Nix](#nix-and-nixos) |
+
+### Flatpak
+
+Install Flatpak using your distribution's instructions, then download the `.flatpak` bundle from the [latest release](https://github.com/inlark/inlark/releases/latest). From the download directory, run the following, replacing `<version>` with the downloaded version:
+
+```sh
+flatpak install --user ./inlark-<version>-x64.flatpak
+flatpak run com.inlark.Inlark
+```
+
+Confirm adding Flathub when asked: it supplies the shared runtime. inlark itself is distributed through GitHub Releases and does not require a Flathub listing.
+
+**Updates are manual.** Download the new bundle, quit inlark, and install it with `flatpak install --user --reinstall ./inlark-<new-version>-x64.flatpak`. This keeps your Flatpak accounts, drafts and settings. `flatpak update` updates the shared runtime, but does not fetch new inlark bundles. The native installer updater is disabled in Flatpak.
+
+Flatpak stores app data separately, under `~/.var/app/com.inlark.Inlark/config/Inlark`. Switching from an AppImage, `.deb`, `.rpm` or Nix installation does not import existing accounts or drafts. The internal Flatpak ID and `Inlark` data directory keep their original spelling for compatibility.
 
 ### Nix and NixOS
 
@@ -135,10 +150,14 @@ pnpm test:packaged-crypto # bundled worker encryption and locking smoke test
 pnpm test:crypto-interop # independent GnuPG verification of inlark output
 nix build path:.       # Nix package in ./result/bin/inlark
 pnpm package:linux     # AppImage, .deb and .rpm in apps/desktop/release
+pnpm package:flatpak   # standalone .flatpak bundle (x64 Linux)
+pnpm test:flatpak      # isolated Flatpak installation and native IPC/SQLite smoke test
 pnpm test:deb          # Debian packaging smoke test (Podman)
 ```
 
 The Nix build is pinned by `flake.lock`, `pnpm-lock.yaml` and the dependency hash in `nix/package.nix`. After changing dependencies, replace that hash with the one Nix reports.
+
+Flatpak packaging also needs `flatpak` and `flatpak-builder`; its smoke test needs Xvfb and xauth. See the [Flatpak packaging guide](apps/desktop/packaging/flatpak/README.md) for release automation and desktop validation.
 
 To smoke-test the Nix package without opening a window:
 
