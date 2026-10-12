@@ -37,6 +37,8 @@ protocol.registerSchemesAsPrivileged([
   },
 ])
 configureAppIdentity(app)
+if (process.platform === 'linux' && process.env.FLATPAK_ID)
+  app.setDesktopName(process.env.FLATPAK_ID + '.desktop')
 let window: BrowserWindow | null = null,
   tray: Tray | null = null,
   quitting = false

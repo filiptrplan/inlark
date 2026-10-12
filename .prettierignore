@@ -3,6 +3,7 @@ node_modules
 .turbo
 .astro
 .wrangler
+.flatpak-builder
 **/out
 **/release
 result
