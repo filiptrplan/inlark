@@ -1,10 +1,15 @@
 import type { Config } from 'dompurify'
 import { plainTextHtml, type Message } from '@inlark/core'
 
-/** Older cached JMAP messages may store the same plain-text part in both fields. */
+// Cached JMAP bodies can match for either MIME type. Look for a document, paired
+// elements, or image markup; a literal <br> or <sender@example.test> is still text.
+const htmlMarkup =
+  /<(?:!doctype\s+html|html|head|body)(?:\s|>)|<([a-z][a-z\d:-]*)\b[^>]*>[\s\S]*?<\/\1\s*>|<(?:img|hr)\b[^>]*>/i
+
+/** Repair duplicated plain-text bodies without escaping duplicated HTML bodies. */
 export function emailBodyHtml(message: Pick<Message, 'html' | 'text' | 'preview'>): string {
   const html = message.html?.trim()
-  if (html && html !== message.text?.trim()) return message.html!
+  if (html && (html !== message.text?.trim() || htmlMarkup.test(html))) return message.html!
   return plainTextHtml(
     (message.text?.trim() ? message.text : message.preview) ||
       'No readable message body is available.',

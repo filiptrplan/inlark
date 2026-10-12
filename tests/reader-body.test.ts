@@ -20,6 +20,22 @@ describe('email body fallback', () => {
       html,
     )
   })
+  it.each([
+    '<!DOCTYPE html>\n<html xmlns:v="urn:schemas-microsoft-com:vml" style="line-height:1.5"><head><meta charset="utf-8"><title>Weekly database report</title></head><body><table><tr><td>Database report</td></tr></table></body></html>',
+    '<!DOCTYPE html>\n<html style="font-weight: 400"><head><meta charset="utf-8"></head><body><h1>Weekly Report</h1><p>Your activity this week.</p></body></html>',
+    '<p>Hello <strong>there</strong>.</p><p>Another paragraph.</p>',
+    '<img src="cid:logo@example.test" alt="Report">',
+  ])('renders HTML duplicated in both body fields: %s', (html) => {
+    expect(emailBodyHtml({ html, text: html, preview: 'Weekly report' })).toBe(html)
+    expect(emailBodyHtml({ html: `\n${html}\n`, text: html, preview: '' })).toBe(`\n${html}\n`)
+  })
+  it('keeps literal markup in duplicated plain text escaped', () => {
+    const text = 'Use <br> literally & keep "quotes".\nSender <sender@example.test>'
+    const html = emailBodyHtml({ html: text, text, preview: '' })
+    expect(html).toContain('white-space:pre-wrap')
+    expect(html).toContain('Use &lt;br&gt; literally &amp; keep &quot;quotes&quot;.\n')
+    expect(html).toContain('Sender &lt;sender@example.test&gt;')
+  })
   it('escapes literal markup and link attributes in plain text', () => {
     const html = emailBodyHtml({
       text: 'Use <br> literally & keep "quotes".\nhttps://example.test/?a=1&b=2" title="unexpected',
