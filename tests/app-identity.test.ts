@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs'
 import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { configureAppIdentity } from '../apps/desktop/src/main/app-identity'
+import { configureAppIdentity, preferSecretService } from '../apps/desktop/src/main/app-identity'
 
 const directories: string[] = []
 async function directory() {
@@ -40,6 +40,16 @@ function electronApp(appData: string) {
       paths.set(key, value)
     },
     once: (event: 'ready', listener: () => void) => events.once(event, listener),
+    commandLine: commandLine(),
+  }
+}
+
+function commandLine(initial: Record<string, string> = {}) {
+  const switches = new Map(Object.entries(initial))
+  return {
+    switches,
+    hasSwitch: (name: string) => switches.has(name),
+    appendSwitch: (name: string, value?: string) => void switches.set(name, value ?? ''),
   }
 }
 
@@ -84,5 +94,40 @@ describe('app identity compatibility', () => {
     expect(app.getPath('sessionData')).toBe(override)
     expect(existsSync(override)).toBe(true)
     expect(existsSync(join(root, 'default'))).toBe(false)
+  })
+})
+
+describe('credential storage backend', () => {
+  it.each([
+    ['niri', 'niri'],
+    ['Hyprland', 'Hyprland'],
+    ['sway', 'sway'],
+    ['no desktop', undefined],
+    ['GNOME', 'ubuntu:GNOME'],
+  ])('uses the Secret Service on %s', (_name, desktop) => {
+    const line = commandLine()
+    preferSecretService(line, { XDG_CURRENT_DESKTOP: desktop }, 'linux')
+    expect(line.switches.get('password-store')).toBe('gnome-libsecret')
+  })
+
+  it.each([
+    { XDG_CURRENT_DESKTOP: 'KDE' },
+    { DESKTOP_SESSION: 'plasmawayland' },
+    { KDE_FULL_SESSION: 'true' },
+  ])('leaves KDE on KWallet: %o', (env) => {
+    const line = commandLine()
+    preferSecretService(line, env, 'linux')
+    expect(line.switches.has('password-store')).toBe(false)
+  })
+
+  it('keeps an explicit choice and leaves other platforms alone', () => {
+    const chosen = commandLine({ 'password-store': 'kwallet6' })
+    preferSecretService(chosen, { XDG_CURRENT_DESKTOP: 'niri' }, 'linux')
+    expect(chosen.switches.get('password-store')).toBe('kwallet6')
+    for (const platform of ['darwin', 'win32'] as const) {
+      const line = commandLine()
+      preferSecretService(line, {}, platform)
+      expect(line.switches.size).toBe(0)
+    }
   })
 })
