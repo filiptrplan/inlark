@@ -39,7 +39,15 @@ const modeDetail: Record<McpMode, string> = {
   on: 'Assistants can also organize mail, and write and send drafts.',
 }
 
-function CopyField({ label, value }: { label: string; value: string }) {
+function CopyField({
+  label,
+  value,
+  notify,
+}: {
+  label: string
+  value: string
+  notify: (message: string, tone?: 'error' | 'info') => void
+}) {
   const [copied, setCopied] = useState(false)
   return (
     <div className="flex items-center gap-2 mt-1.5 min-w-0">
@@ -52,10 +60,13 @@ function CopyField({ label, value }: { label: string; value: string }) {
         aria-label={'Copy ' + label}
         title={copied ? 'Copied' : 'Copy'}
         onClick={() =>
-          void navigator.clipboard.writeText(value).then(() => {
-            setCopied(true)
-            setTimeout(() => setCopied(false), 1500)
-          })
+          void navigator.clipboard.writeText(value).then(
+            () => {
+              setCopied(true)
+              setTimeout(() => setCopied(false), 1500)
+            },
+            () => notify('Couldn’t copy. Select the text and copy it instead.', 'error'),
+          )
         }
       >
         {copied ? <Check size={14} /> : <Copy size={14} />}
@@ -150,6 +161,7 @@ export function McpSettings({
                   <strong>Claude Code</strong>
                   <p>Run this once in a terminal.</p>
                   <CopyField
+                    notify={notify}
                     label="Claude Code command"
                     value={'claude mcp add inlark -- ' + s.command}
                   />
@@ -157,7 +169,7 @@ export function McpSettings({
                 <div className={cn(row, 'block')}>
                   <strong>Other MCP clients</strong>
                   <p>Add a stdio server that runs this command.</p>
-                  <CopyField label="server command" value={s.command} />
+                  <CopyField notify={notify} label="server command" value={s.command} />
                 </div>
               </>
             ) : (
@@ -176,7 +188,7 @@ export function McpSettings({
               <div className={cn(row, 'block')}>
                 <strong>Socket</strong>
                 <p>Clients reach inlark through this file, which only your user can open.</p>
-                <CopyField label="socket path" value={s.socket} />
+                <CopyField notify={notify} label="socket path" value={s.socket} />
               </div>
             )}
           </div>

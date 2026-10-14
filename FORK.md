@@ -113,8 +113,8 @@ the only upstream files the fork changes:
 
 ## Carried fixes
 
-These are general fixes, kept as separate commits below the MCP commit so each one can go
-upstream as a pull request. Once upstream merges an equivalent change, the rebase drops the
+These are general fixes, each kept as its own commit with a matching branch off upstream's `main`,
+so each one can go upstream as a pull request. Once upstream merges an equivalent change, the rebase drops the
 commit or it conflicts. Either way, keep upstream's version and drop the fork's commit.
 
 - `fix: remember passwords on Linux desktops Electron doesn't recognize`
@@ -122,6 +122,10 @@ commit or it conflicts. Either way, keep upstream's version and drop the fork's 
   and `tests/app-identity.test.ts`. On niri, Hyprland, Sway, and other desktops Electron doesn't
   recognize, it chooses the Secret Service for saved passwords instead of a plain-text store
   that inlark refuses.
+- `fix: allow copy buttons to write to the clipboard` (branch `fix/clipboard-write`). It
+  changes the permission handlers in `apps/desktop/src/main/index.ts`, next to the MCP hook
+  lines. The app session denied every permission, so `navigator.clipboard.writeText` failed and
+  no copy button worked. It allows clipboard writes for inlark's own page only.
 
 ## Syncing with upstream
 
