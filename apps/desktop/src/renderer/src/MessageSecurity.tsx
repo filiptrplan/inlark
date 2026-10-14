@@ -19,7 +19,7 @@ import { Callout, FingerprintBlock, StateIcon, useEncryption } from './encryptio
 
 /** Whether a message's content was withheld, and so the body can't be shown at all. */
 export const withheld = (security?: MailSecurity) =>
-  !!security && ['locked', 'missingKey', 'integrityFailure'].includes(security.state)
+  !!security && ['locked', 'missingKey', 'integrityFailure', 'unreadable'].includes(security.state)
 
 function Pill({
   tone,
@@ -236,39 +236,46 @@ export function WithheldBody({
           title: 'This message may have been tampered with',
           text: 'inlark couldn’t confirm it arrived intact, so its content and attachments are hidden.',
         }
-      : security.state === 'missingKey'
+      : security.state === 'unreadable'
         ? {
-            icon: Key,
+            icon: ShieldX,
             tone: 'neutral' as const,
-            title: 'No key here can open this message',
-            text: 'It was encrypted to a key that isn’t on this device. Import that private key, including older ones, to read it.',
-            action: onOpenEncryption && (
-              <Button onClick={onOpenEncryption}>Encryption settings…</Button>
-            ),
+            title: 'This message couldn’t be opened',
+            text: 'Its structure is unusual, so inlark couldn’t read it. It wasn’t flagged as tampered with.',
           }
-        : unset
+        : security.state === 'missingKey'
           ? {
-              icon: LockKeyhole,
-              tone: 'accent' as const,
-              title: 'This message is encrypted',
-              text: 'Set up encryption with the key it was sent to, then you can read it here.',
+              icon: Key,
+              tone: 'neutral' as const,
+              title: 'No key here can open this message',
+              text: 'It was encrypted to a key that isn’t on this device. Import that private key, including older ones, to read it.',
               action: onOpenEncryption && (
-                <Button variant="primary" onClick={onOpenEncryption}>
-                  Set up encryption…
-                </Button>
+                <Button onClick={onOpenEncryption}>Encryption settings…</Button>
               ),
             }
-          : {
-              icon: LockKeyhole,
-              tone: 'accent' as const,
-              title: 'This message is encrypted',
-              text: 'Unlock your keys to read it.',
-              action: onUnlock && (
-                <Button variant="primary" onClick={onUnlock}>
-                  Unlock
-                </Button>
-              ),
-            }
+          : unset
+            ? {
+                icon: LockKeyhole,
+                tone: 'accent' as const,
+                title: 'This message is encrypted',
+                text: 'Set up encryption with the key it was sent to, then you can read it here.',
+                action: onOpenEncryption && (
+                  <Button variant="primary" onClick={onOpenEncryption}>
+                    Set up encryption…
+                  </Button>
+                ),
+              }
+            : {
+                icon: LockKeyhole,
+                tone: 'accent' as const,
+                title: 'This message is encrypted',
+                text: 'Unlock your keys to read it.',
+                action: onUnlock && (
+                  <Button variant="primary" onClick={onUnlock}>
+                    Unlock
+                  </Button>
+                ),
+              }
   return (
     <div
       className={cn(
