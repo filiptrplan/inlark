@@ -67,6 +67,25 @@ From a checkout, any Node 18 or later works:
 claude mcp add inlark -- node /path/to/inlark/packages/mcp/bin/inlark-mcp.mjs
 ```
 
+Claude Desktop has no command for this, so the panel shows an entry for
+`claude_desktop_config.json` instead, with the file's location for this platform. Claude Desktop
+starts servers without a shell or the user's PATH, so the entry names the shim, and Node for a
+checkout, by absolute path:
+
+```json
+{
+  "mcpServers": {
+    "inlark": {
+      "command": "/path/to/node",
+      "args": ["/path/to/inlark/packages/mcp/bin/inlark-mcp.mjs"]
+    }
+  }
+}
+```
+
+When `INLARK_DATA_DIR` or `INLARK_MCP_SOCKET` is set for inlark, the entry also sets
+`INLARK_MCP_SOCKET` for the shim, since Claude Desktop doesn't inherit that environment.
+
 The packaged AppImage, deb, rpm, and Flatpak builds don't include the shim. Use the checkout
 command for those. Flatpak keeps its data under `~/.var/app/<app id>/config/Inlark`, so set
 `INLARK_DATA_DIR` or `INLARK_MCP_SOCKET` for the shim.

@@ -113,9 +113,9 @@ export function McpSettings({
     <>
       <h3 className="m-0 text-[20px] font-[550] tracking-[-0.5px]">MCP server</h3>
       <p className="settings-lead text-muted mt-1.5 mb-6 mx-0 text-[12px] leading-[1.6]">
-        Lets AI assistants such as Claude Code work with the accounts connected here, through the
-        Model Context Protocol. Everything stays on this device, and assistants can only connect
-        while inlark is open.
+        Lets AI assistants such as Claude Code and Claude Desktop work with the accounts connected
+        here, through the Model Context Protocol. Everything stays on this device, and assistants
+        can only connect while inlark is open.
       </p>
       {!bridge ? (
         <p className="text-muted text-[12px]">
@@ -166,6 +166,25 @@ export function McpSettings({
                     value={'claude mcp add inlark -- ' + s.command}
                   />
                 </div>
+                {s.claudeDesktop && (
+                  <div className={cn(row, 'block')}>
+                    <strong>Claude Desktop</strong>
+                    <p>
+                      Add this to{' '}
+                      <code className="font-mono text-[11px] break-all">
+                        {s.claudeDesktop.config}
+                      </code>
+                      , merging it into any{' '}
+                      <code className="font-mono text-[11px]">mcpServers</code> already there, then
+                      restart Claude Desktop.
+                    </p>
+                    <CopyField
+                      notify={notify}
+                      label="Claude Desktop config"
+                      value={s.claudeDesktop.entry}
+                    />
+                  </div>
+                )}
                 <div className={cn(row, 'block')}>
                   <strong>Other MCP clients</strong>
                   <p>Add a stdio server that runs this command.</p>
