@@ -22,6 +22,7 @@ import { discover } from './discovery-transport'
 import { SenderAvatarResolver } from './sender-avatar'
 import { UpdateManager } from './updates'
 import { configureAppIdentity } from './app-identity'
+import { startMcpServer } from '@inlark/mcp'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 protocol.registerSchemesAsPrivileged([
@@ -255,6 +256,7 @@ else {
         discover,
       })
       await service.init()
+      startMcpServer(service, app)
       // Native surfaces such as the window controls and menus follow inlark's theme setting.
       nativeTheme.themeSource = service.settings.theme
       nativeTheme.on('updated', followTheme)

@@ -12,7 +12,7 @@ stdenv.mkDerivation (finalAttrs: {
     pnpm = pnpm_12;
     fetcherVersion = 4;
     postPatch = "sed -i /storeDir:/d pnpm-workspace.yaml";
-    hash = "sha256-VKMs8tV1e+e2cvebQT8vptqqg56P4NOj0gaqW9xxFrw=";
+    hash = "sha256-cJdoSG7+2CSJ0Is8YfT9h7WnN6EgHEZOR0BmTY92SSU=";
   };
   postPatch = "sed -i /storeDir:/d pnpm-workspace.yaml";
   ELECTRON_SKIP_BINARY_DOWNLOAD = "1";
@@ -42,6 +42,11 @@ stdenv.mkDerivation (finalAttrs: {
     makeWrapper ${electron_44}/bin/electron $out/bin/inlark \
       --add-flags "$out/share/inlark" \
       --set-default ELECTRON_OZONE_PLATFORM_HINT auto
+    mkdir -p $out/share/inlark/mcp
+    cp packages/mcp/bin/*.mjs $out/share/inlark/mcp/
+    makeWrapper ${electron_44}/bin/electron $out/bin/inlark-mcp \
+      --set ELECTRON_RUN_AS_NODE 1 \
+      --add-flags "$out/share/inlark/mcp/inlark-mcp.mjs"
     runHook postInstall
   '';
   meta = {

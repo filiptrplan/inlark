@@ -40,7 +40,8 @@
     "react-dom": "^19.0.0",
     "zod": "^4.0.0",
     "@inlark/mime": "workspace:*",
-    "@inlark/crypto": "workspace:*"
+    "@inlark/crypto": "workspace:*",
+    "@inlark/mcp": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.0",
