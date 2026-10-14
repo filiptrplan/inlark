@@ -2,8 +2,9 @@
 
 This fork of [inlark/inlark](https://github.com/inlark/inlark) adds an MCP server so AI
 assistants can read, organize, and draft email through the accounts already connected in inlark.
-The `upstream` remote is inlark/inlark and `origin` is filiptrplan/inlark. Fork work lives on the
-`mcp` branch, which is rebased onto `upstream/main`.
+The `upstream` remote is inlark/inlark and `origin` is filiptrplan/inlark. Fork work is
+developed on the `mcp` branch, which is rebased onto `upstream/main`. The fork's `main` always
+points at the same commit as `mcp`, so installs that follow `main` get the fork.
 
 ## How it works
 
@@ -152,7 +153,8 @@ Then check that everything still works and push:
 pnpm install
 pnpm check
 nix build .#inlark
-git push --force-with-lease origin mcp
+git branch -f main mcp
+git push --force-with-lease origin mcp main
 ```
 
 If upstream changes a `MailService` method the server uses, `pnpm typecheck` fails in
