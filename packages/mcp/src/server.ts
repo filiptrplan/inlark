@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { McpServer, type RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import {
@@ -51,7 +51,7 @@ export interface MailApi {
 }
 
 export interface McpOptions {
-  /** Offer only tools that read mail. */
+  /** Start with only the tools that read mail. */
   readOnly?: boolean
   version?: string
 }
@@ -165,7 +165,13 @@ function messageDetail(m: Message, mailboxes: Map<string, string>, limit: number
   }
 }
 
-export function createMcpServer(mail: MailApi, options: McpOptions = {}): McpServer {
+export interface McpSession {
+  server: McpServer
+  /** Hides or offers the tools that change mail, also while a client is connected. */
+  setReadOnly(readOnly: boolean): void
+}
+
+export function createMcpServer(mail: MailApi, options: McpOptions = {}): McpSession {
   const server = new McpServer(
     { name: 'inlark', title: 'inlark', version: options.version || '0.0.0' },
     { instructions },
@@ -323,7 +329,7 @@ export function createMcpServer(mail: MailApi, options: McpOptions = {}): McpSer
     ),
   )
 
-  if (options.readOnly) return server
+  const writeTools: RegisteredTool[] = []
 
   const actions = [
     'archive',
@@ -337,55 +343,63 @@ export function createMcpServer(mail: MailApi, options: McpOptions = {}): McpSer
     'unstar',
     'move',
   ] as const
-  server.registerTool(
-    'update_conversations',
-    {
-      title: 'Organize conversations',
-      description:
-        'Archives, trashes, restores, marks read or unread, stars, reports spam, or moves whole conversations. Returns an undoId for the undo tool. Permanent deletion is not offered.',
-      inputSchema: {
-        conversations: z.array(target).min(1).max(500),
-        action: z.enum(actions),
-        folderId: id.optional().describe('The destination for "move".'),
+  writeTools.push(
+    server.registerTool(
+      'update_conversations',
+      {
+        title: 'Organize conversations',
+        description:
+          'Archives, trashes, restores, marks read or unread, stars, reports spam, or moves whole conversations. Returns an undoId for the undo tool. Permanent deletion is not offered.',
+        inputSchema: {
+          conversations: z.array(target).min(1).max(500),
+          action: z.enum(actions),
+          folderId: id.optional().describe('The destination for "move".'),
+        },
+        annotations: { destructiveHint: false, idempotentHint: true, openWorldHint: false },
       },
-      annotations: { destructiveHint: false, idempotentHint: true, openWorldHint: false },
-    },
-    handle(
-      async ({
-        conversations,
-        action,
-        folderId,
-      }: {
-        conversations: { accountId: string; threadId: string }[]
-        action: (typeof actions)[number]
-        folderId?: string
-      }) => {
-        if (action === 'move' && !folderId) throw new Error('Choose a folder to move to.')
-        return mail.mutate({ targets: conversations, action, mailboxId: folderId })
-      },
+      handle(
+        async ({
+          conversations,
+          action,
+          folderId,
+        }: {
+          conversations: { accountId: string; threadId: string }[]
+          action: (typeof actions)[number]
+          folderId?: string
+        }) => {
+          if (action === 'move' && !folderId) throw new Error('Choose a folder to move to.')
+          return mail.mutate({ targets: conversations, action, mailboxId: folderId })
+        },
+      ),
     ),
   )
 
-  server.registerTool(
-    'undo',
-    {
-      title: 'Undo',
-      description: 'Reverts an earlier update_conversations call by its undoId.',
-      inputSchema: { undoId: id },
-      annotations: { destructiveHint: false, openWorldHint: false },
-    },
-    handle(async ({ undoId }: { undoId: string }) => mail.undo(undoId)),
+  writeTools.push(
+    server.registerTool(
+      'undo',
+      {
+        title: 'Undo',
+        description: 'Reverts an earlier update_conversations call by its undoId.',
+        inputSchema: { undoId: id },
+        annotations: { destructiveHint: false, openWorldHint: false },
+      },
+      handle(async ({ undoId }: { undoId: string }) => mail.undo(undoId)),
+    ),
   )
 
-  server.registerTool(
-    'list_drafts',
-    {
-      title: 'List drafts',
-      description:
-        'Lists drafts saved on this device, including ones written in inlark. Drafts only on the server appear in search_mail with view "drafts".',
-      annotations: read,
-    },
-    handle(async () => (await mail.drafts()).filter((d) => d.status !== 'sent').map(draftSummary)),
+  writeTools.push(
+    server.registerTool(
+      'list_drafts',
+      {
+        title: 'List drafts',
+        description:
+          'Lists drafts saved on this device, including ones written in inlark. Drafts only on the server appear in search_mail with view "drafts".',
+        annotations: read,
+      },
+      handle(async () =>
+        (await mail.drafts()).filter((d) => d.status !== 'sent').map(draftSummary),
+      ),
+    ),
   )
 
   const draftShape = {
@@ -415,103 +429,115 @@ export function createMcpServer(mail: MailApi, options: McpOptions = {}): McpSer
       ),
     quote: z.boolean().default(true).describe('Quote the original in a new reply.'),
   }
-  server.registerTool(
-    'save_draft',
-    {
-      title: 'Save draft',
-      description:
-        'Creates or updates a draft and saves it to the account’s Drafts folder, where the user can review it in inlark. Nothing is sent.',
-      inputSchema: draftShape,
-      annotations: { destructiveHint: false, openWorldHint: false },
-    },
-    handle(async (args: z.infer<z.ZodObject<typeof draftShape>>) => {
-      if (args.subject && /[\r\n]/.test(args.subject))
-        throw new Error('The subject must be a single line.')
-      let draft: Draft
-      if (args.draftId) {
-        const existing = (await mail.drafts()).find((d) => d.id === args.draftId)
-        if (!existing) throw new Error('That draft no longer exists.')
-        if (['sending', 'uncertain', 'sent'].includes(existing.status))
-          throw new Error('That draft is being sent or was already sent.')
-        draft = {
-          ...existing,
-          ...(args.identityId ? { identityId: args.identityId } : {}),
-          to: addresses(args.to) ?? existing.to,
-          cc: addresses(args.cc) ?? existing.cc,
-          bcc: addresses(args.bcc) ?? existing.bcc,
-          subject: args.subject ?? existing.subject,
-          ...(args.body !== undefined ? rewriteBody(existing, args.body) : {}),
-          updatedAt: new Date().toISOString(),
+  writeTools.push(
+    server.registerTool(
+      'save_draft',
+      {
+        title: 'Save draft',
+        description:
+          'Creates or updates a draft and saves it to the account’s Drafts folder, where the user can review it in inlark. Nothing is sent.',
+        inputSchema: draftShape,
+        annotations: { destructiveHint: false, openWorldHint: false },
+      },
+      handle(async (args: z.infer<z.ZodObject<typeof draftShape>>) => {
+        if (args.subject && /[\r\n]/.test(args.subject))
+          throw new Error('The subject must be a single line.')
+        let draft: Draft
+        if (args.draftId) {
+          const existing = (await mail.drafts()).find((d) => d.id === args.draftId)
+          if (!existing) throw new Error('That draft no longer exists.')
+          if (['sending', 'uncertain', 'sent'].includes(existing.status))
+            throw new Error('That draft is being sent or was already sent.')
+          draft = {
+            ...existing,
+            ...(args.identityId ? { identityId: args.identityId } : {}),
+            to: addresses(args.to) ?? existing.to,
+            cc: addresses(args.cc) ?? existing.cc,
+            bcc: addresses(args.bcc) ?? existing.bcc,
+            subject: args.subject ?? existing.subject,
+            ...(args.body !== undefined ? rewriteBody(existing, args.body) : {}),
+            updatedAt: new Date().toISOString(),
+          }
+        } else {
+          if (!args.accountId) throw new Error('Choose an account for the new draft.')
+          if (args.kind !== 'new' && !args.threadId)
+            throw new Error('Pass the threadId of the conversation to answer.')
+          const { settings } = await mail.bootstrap()
+          const [identities, messages] = await Promise.all([
+            mail.identities(args.accountId),
+            args.kind !== 'new' ? mail.conversation(args.accountId, args.threadId!) : undefined,
+          ])
+          const message = messages ? pickMessage(messages, args.messageId) : undefined
+          draft = composeDraft({
+            kind: args.kind,
+            accountId: args.accountId,
+            identities,
+            identityId: args.identityId,
+            settings,
+            message,
+            body: args.body ?? '',
+            subject: args.subject,
+            to: addresses(args.to),
+            cc: addresses(args.cc),
+            bcc: addresses(args.bcc),
+            quote: args.quote,
+          })
+          if (args.kind === 'forward' && message?.attachments?.length)
+            draft.attachments = (
+              await mail.stageRemoteAttachments(
+                args.accountId,
+                message.attachments,
+                draft.encryption === 'encrypt',
+              )
+            ).map((a) => ({ ...a, cid: undefined }))
         }
-      } else {
-        if (!args.accountId) throw new Error('Choose an account for the new draft.')
-        if (args.kind !== 'new' && !args.threadId)
-          throw new Error('Pass the threadId of the conversation to answer.')
-        const { settings } = await mail.bootstrap()
-        const [identities, messages] = await Promise.all([
-          mail.identities(args.accountId),
-          args.kind !== 'new' ? mail.conversation(args.accountId, args.threadId!) : undefined,
-        ])
-        const message = messages ? pickMessage(messages, args.messageId) : undefined
-        draft = composeDraft({
-          kind: args.kind,
-          accountId: args.accountId,
-          identities,
-          identityId: args.identityId,
-          settings,
-          message,
-          body: args.body ?? '',
-          subject: args.subject,
-          to: addresses(args.to),
-          cc: addresses(args.cc),
-          bcc: addresses(args.bcc),
-          quote: args.quote,
-        })
-        if (args.kind === 'forward' && message?.attachments?.length)
-          draft.attachments = (
-            await mail.stageRemoteAttachments(
-              args.accountId,
-              message.attachments,
-              draft.encryption === 'encrypt',
-            )
-          ).map((a) => ({ ...a, cid: undefined }))
-      }
-      return draftSummary(await mail.syncDraft(draftSchema.parse(draft)))
-    }),
+        return draftSummary(await mail.syncDraft(draftSchema.parse(draft)))
+      }),
+    ),
   )
 
-  server.registerTool(
-    'delete_draft',
-    {
-      title: 'Delete draft',
-      description: 'Discards a draft from this device and the server.',
-      inputSchema: { draftId: z.string().uuid() },
-      annotations: { destructiveHint: true, openWorldHint: false },
-    },
-    handle(async ({ draftId }: { draftId: string }) => {
-      await mail.deleteDraft(draftId)
-      return { deleted: draftId }
-    }),
+  writeTools.push(
+    server.registerTool(
+      'delete_draft',
+      {
+        title: 'Delete draft',
+        description: 'Discards a draft from this device and the server.',
+        inputSchema: { draftId: z.string().uuid() },
+        annotations: { destructiveHint: true, openWorldHint: false },
+      },
+      handle(async ({ draftId }: { draftId: string }) => {
+        await mail.deleteDraft(draftId)
+        return { deleted: draftId }
+      }),
+    ),
   )
 
-  server.registerTool(
-    'send_draft',
-    {
-      title: 'Send draft',
-      description:
-        'Sends a saved draft. This cannot be undone. Only call it after the user has reviewed the recipients and text and asked to send.',
-      inputSchema: { draftId: z.string().uuid() },
-      annotations: { destructiveHint: true, idempotentHint: false, openWorldHint: true },
-    },
-    handle(async ({ draftId }: { draftId: string }) => {
-      const draft = (await mail.drafts()).find((d) => d.id === draftId)
-      if (!draft) throw new Error('That draft no longer exists.')
-      if (draft.status === 'sent') throw new Error('That draft was already sent.')
-      if (draft.encryption === 'encrypt' && !draft.text && !draft.html)
-        throw new Error('Unlock the encryption vault in inlark before sending this draft.')
-      return mail.send(draft)
-    }),
+  writeTools.push(
+    server.registerTool(
+      'send_draft',
+      {
+        title: 'Send draft',
+        description:
+          'Sends a saved draft. This cannot be undone. Only call it after the user has reviewed the recipients and text and asked to send.',
+        inputSchema: { draftId: z.string().uuid() },
+        annotations: { destructiveHint: true, idempotentHint: false, openWorldHint: true },
+      },
+      handle(async ({ draftId }: { draftId: string }) => {
+        const draft = (await mail.drafts()).find((d) => d.id === draftId)
+        if (!draft) throw new Error('That draft no longer exists.')
+        if (draft.status === 'sent') throw new Error('That draft was already sent.')
+        if (draft.encryption === 'encrypt' && !draft.text && !draft.html)
+          throw new Error('Unlock the encryption vault in inlark before sending this draft.')
+        return mail.send(draft)
+      }),
+    ),
   )
 
-  return server
+  const setReadOnly = (readOnly: boolean) => {
+    // A connected client hears about the change through `notifications/tools/list_changed`.
+    for (const tool of writeTools)
+      if (tool.enabled === readOnly) readOnly ? tool.disable() : tool.enable()
+  }
+  setReadOnly(!!options.readOnly)
+  return { server, setReadOnly }
 }

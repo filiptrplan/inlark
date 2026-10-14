@@ -38,6 +38,7 @@ import { AliasesDialog } from './Aliases'
 import { IndexingMeter } from './IndexingMeter'
 import { ShortcutEditor } from './ShortcutEditor'
 import { EncryptionPanel } from './EncryptionSettings'
+import { McpIcon, McpSettings } from './McpSettings'
 import { newMessageAccount } from './compose-account'
 
 /** A miniature of the app window in one theme. */
@@ -256,6 +257,7 @@ export function SettingsPanel({
               ['signatures', 'Signatures', PenLine],
               ['encryption', 'Encryption', LockKeyhole],
               ['shortcuts', 'Shortcuts', Keyboard],
+              ['mcp', 'MCP server', McpIcon],
               ['about', 'About', Info],
             ].map(([id, name, Icon]) => {
               const Component = Icon as typeof Mail
@@ -794,6 +796,7 @@ export function SettingsPanel({
                 <ShortcutEditor />
               </>
             )}
+            {tab === 'mcp' && <McpSettings notify={notify} />}
             {tab === 'about' && (
               <>
                 <div

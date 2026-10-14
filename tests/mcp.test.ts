@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
-import { mkdtempSync, rmSync, statSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createInterface } from 'node:readline'
@@ -108,9 +108,12 @@ function client(socket: string) {
     env: { ...process.env, INLARK_MCP_SOCKET: socket },
   }) as ChildProcessWithoutNullStreams
   const pending = new Map<number, (value: any) => void>()
+  const notifications: string[] = []
+  const exited = new Promise<number | null>((resolve) => child.on('exit', resolve))
   createInterface({ input: child.stdout }).on('line', (line) => {
     const reply = JSON.parse(line)
-    pending.get(reply.id)?.(reply)
+    if (reply.id === undefined) notifications.push(reply.method)
+    else pending.get(reply.id)?.(reply)
   })
   let next = 0
   const request = (method: string, params: unknown = {}) =>
@@ -135,7 +138,9 @@ function client(socket: string) {
     )
     return reply
   }
-  return { child, request, call, initialize }
+  const tools = async () =>
+    (await request('tools/list')).result.tools.map((t: { name: string }) => t.name).sort()
+  return { child, request, call, initialize, tools, notifications, exited }
 }
 const safeJson = (text: string) => {
   try {
@@ -149,26 +154,29 @@ const cleanups: (() => void)[] = []
 afterEach(() => {
   for (const cleanup of cleanups.splice(0)) cleanup()
 })
-function serve(mail: MailApi, mode?: string) {
-  const directory = mkdtempSync(join(tmpdir(), 'inlark-mcp-'))
+function serve(mail: MailApi, env: Record<string, string> = {}, directory?: string) {
+  directory ??= mkdtempSync(join(tmpdir(), 'inlark-mcp-'))
   const path = socketPath(directory)
   const quit: (() => void)[] = []
-  const server = startMcpServer(
+  const controller = startMcpServer(
     mail,
     { getPath: () => directory, getVersion: () => '9.9.9', on: (_e, fn) => quit.push(fn) },
-    mode,
-    path,
+    { env, path },
   )
   cleanups.push(() => {
     quit.forEach((fn) => fn())
     rmSync(directory, { recursive: true, force: true })
   })
-  return { server, path }
+  return { controller, path, directory }
 }
-const listening = (server: ReturnType<typeof startMcpServer>) =>
-  new Promise<void>((resolve) =>
-    server!.listening ? resolve() : server!.once('listening', () => resolve()),
-  )
+const readTools = [
+  'list_accounts',
+  'list_folders',
+  'list_identities',
+  'read_conversation',
+  'search_mail',
+]
+const settle = () => new Promise((resolve) => setTimeout(resolve, 50))
 
 describe('MCP socket', () => {
   it('finds the same socket as the desktop app', () => {
@@ -182,14 +190,47 @@ describe('MCP socket', () => {
     )
   })
 
-  it('stays off when turned off', () => {
-    expect(startMcpServer(fakeMail().mail, {} as never, 'off')).toBeUndefined()
+  it('stays off when INLARK_MCP turns it off, and the settings cannot change that', async () => {
+    const { controller, path } = serve(fakeMail().mail, { INLARK_MCP: 'off' })
+    expect(controller.status()).toMatchObject({ mode: 'off', locked: true, listening: false })
+    expect(existsSync(path)).toBe(false)
+    await expect(controller.setMode('on')).rejects.toThrow(/INLARK_MCP/)
+  })
+
+  it('switches modes live and remembers the choice', async () => {
+    const { controller, path, directory } = serve(fakeMail().mail)
+    expect(controller.status()).toMatchObject({ mode: 'on', locked: false, listening: true })
+    const mcp = client(path)
+    cleanups.push(() => mcp.child.kill())
+    await mcp.initialize()
+    expect(await mcp.tools()).toContain('send_draft')
+    expect(controller.status().clients).toBe(1)
+
+    await controller.setMode('readonly')
+    await settle()
+    expect(mcp.notifications).toContain('notifications/tools/list_changed')
+    expect(await mcp.tools()).toEqual(readTools)
+    expect((await mcp.call('send_draft', { draftId: crypto.randomUUID() })).error).toBe(true)
+
+    expect(await controller.setMode('off')).toMatchObject({ listening: false, clients: 0 })
+    expect(await mcp.exited).toBe(0)
+    expect(existsSync(path)).toBe(false)
+    expect(JSON.parse(readFileSync(join(directory, 'mcp.json'), 'utf8'))).toEqual({ mode: 'off' })
+
+    // A new launch starts from the saved choice.
+    controller.close()
+    const again = serve(fakeMail().mail, {}, directory)
+    expect(again.controller.status()).toMatchObject({ mode: 'off', listening: false })
+    expect(await again.controller.setMode('readonly')).toMatchObject({ listening: true })
+    const reader = client(path)
+    cleanups.push(() => reader.child.kill())
+    await reader.initialize()
+    expect(await reader.tools()).toEqual(readTools)
   })
 
   it('serves tools through the shim to an owner-only socket', async () => {
     const { mail, synced, sent, mutations } = fakeMail()
-    const { server, path } = serve(mail)
-    await listening(server)
+    const { path } = serve(mail)
     if (process.platform !== 'win32') expect(statSync(path).mode & 0o777).toBe(0o600)
     const mcp = client(path)
     cleanups.push(() => mcp.child.kill())
@@ -254,22 +295,13 @@ describe('MCP socket', () => {
     expect(sent[0].id).toBe(draft.data.draftId)
   })
 
-  it('offers only reading tools in read-only mode', async () => {
-    const { server, path } = serve(fakeMail().mail, 'readonly')
-    await listening(server)
+  it('offers only reading tools when INLARK_MCP is readonly', async () => {
+    const { controller, path } = serve(fakeMail().mail, { INLARK_MCP: 'readonly' })
+    expect(controller.status()).toMatchObject({ mode: 'readonly', locked: true })
     const mcp = client(path)
     cleanups.push(() => mcp.child.kill())
     await mcp.initialize()
-    const tools = (await mcp.request('tools/list')).result.tools.map((t: any) => t.name)
-    expect(tools.sort()).toEqual(
-      [
-        'list_accounts',
-        'list_folders',
-        'list_identities',
-        'read_conversation',
-        'search_mail',
-      ].sort(),
-    )
+    expect(await mcp.tools()).toEqual(readTools)
   })
 
   it('explains when inlark is not running', async () => {
