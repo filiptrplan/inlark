@@ -36,7 +36,12 @@ export function securityKind(source: Uint8Array): 'encrypted' | 'signed' | undef
   const entity = splitEntity(source),
     type = header(entity, 'content-type')
   if (/^multipart\/encrypted\b/i.test(type)) return 'encrypted'
-  if (/^multipart\/signed\b/i.test(type)) return 'signed'
+  // Only OpenPGP signatures are handled here; S/MIME and others read as ordinary mail.
+  if (
+    /^multipart\/signed\b/i.test(type) &&
+    /\bprotocol\s*=\s*"?application\/pgp-signature/i.test(type)
+  )
+    return 'signed'
   const body = /^text\/|^$/i.test(type) ? decodedBody(source) : entity.body
   if (body.includes(Buffer.from('-----BEGIN PGP MESSAGE-----'))) return 'encrypted'
   if (body.includes(Buffer.from('-----BEGIN PGP SIGNED MESSAGE-----'))) return 'signed'

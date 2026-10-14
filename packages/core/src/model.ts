@@ -110,7 +110,7 @@ export interface Attachment {
 }
 export interface MailSecurity {
   encrypted: boolean
-  state: 'decrypted' | 'locked' | 'missingKey' | 'integrityFailure' | 'signed'
+  state: 'decrypted' | 'locked' | 'missingKey' | 'integrityFailure' | 'unreadable' | 'signed'
   signature: 'valid' | 'invalid' | 'unknown' | 'unsigned'
   fingerprint?: string
   confirmed: boolean

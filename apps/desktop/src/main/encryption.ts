@@ -731,7 +731,7 @@ export class EncryptionService {
         /\bencrypt=yes\b/i.test(header(entity, 'autocrypt-draft-state')) || kind === 'encrypted',
     }
     const failure = (
-      state: 'locked' | 'missingKey' | 'integrityFailure',
+      state: 'locked' | 'missingKey' | 'integrityFailure' | 'unreadable',
       detail: string,
     ): Message => ({
       ...safe,
@@ -749,6 +749,7 @@ export class EncryptionService {
         'Unlock the vault to read this message. If this device has no key, import the original private key.',
       )
     let content: Uint8Array,
+      parsing = false,
       signatures: { valid: boolean; fingerprint?: string; keyId: string }[] = []
     const publicKeys = this.state.keys.map((k) => k.publicKey)
     try {
@@ -793,6 +794,7 @@ export class EncryptionService {
         )
         content = parts[0]
       }
+      parsing = true
       const parsed = await parseMime(content)
       if (epoch !== this.epoch || this.locking)
         return failure('locked', 'The vault was locked while opening this message.')
@@ -845,6 +847,12 @@ export class EncryptionService {
         return failure(
           'missingKey',
           'The original private key is needed to decrypt this message. Import it, including retired keys.',
+        )
+      console.warn('Protected message failed to open:', parsing ? 'parse' : 'verify', error)
+      if (parsing)
+        return failure(
+          'unreadable',
+          'The message was verified but its content could not be read. Content and attachments are blocked.',
         )
       return failure(
         'integrityFailure',
