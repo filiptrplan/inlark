@@ -164,10 +164,18 @@ function createWindow() {
     event.preventDefault()
     if (/^https?:|^mailto:/.test(event.url)) void service.openExternal(event.url).catch(() => {})
   })
-  window.webContents.session.setPermissionRequestHandler((_wc, _permission, callback) =>
-    callback(false),
+  // Copy buttons use the async clipboard API, which Chromium gates behind a permission. Only
+  // inlark's own page may write to the clipboard; reading it and everything else stay denied.
+  const appOrigin = devURL ? new URL(devURL).origin : 'inlark://mail'
+  const allowed = (permission: string, url = '') =>
+    permission === 'clipboard-sanitized-write' &&
+    (url === appOrigin || url.startsWith(appOrigin + '/'))
+  window.webContents.session.setPermissionRequestHandler((_wc, permission, callback, details) =>
+    callback(allowed(permission, details.requestingUrl)),
   )
-  window.webContents.session.setPermissionCheckHandler(() => false)
+  window.webContents.session.setPermissionCheckHandler((_wc, permission, origin) =>
+    allowed(permission, origin),
+  )
   window.webContents.on('did-finish-load', () => {
     if (smoke)
       void window!.webContents
