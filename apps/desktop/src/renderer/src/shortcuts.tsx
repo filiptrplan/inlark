@@ -91,7 +91,7 @@ export const shortcutDefinitions = [
   { id: 'unread', section: 'Organize', label: 'Mark as unread', defaults: [['U'], ['Shift+U']] },
   { id: 'read', section: 'Organize', label: 'Mark as read', defaults: [['Shift+I']] },
   { id: 'undo', section: 'Organize', label: 'Undo last action', defaults: [['Z'], ['Mod+Z']] },
-  { id: 'select', section: 'Select', label: 'Select conversation', defaults: [['X']] },
+  { id: 'select', section: 'Select', label: 'Select conversation', defaults: [['X'], ['Space']] },
   { id: 'selectRange', section: 'Select', label: 'Select a range', defaults: [['Shift+X']] },
   { id: 'selectAll', section: 'Select', label: 'Select all loaded', defaults: [['Mod+A']] },
   { id: 'compose', section: 'Write', label: 'Compose', defaults: [['C']] },
