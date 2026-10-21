@@ -25,24 +25,26 @@ export function VerificationCodeChip({ message }: { message: Message }) {
       <button
         type="button"
         className={cn(
-          'verification-code-chip inline-flex items-center gap-3 py-2 pr-2.5 pl-3.5 rounded-xl border border-solid',
-          'border-border-strong bg-surface text-left transition-[background,border-color] duration-120 ease-[ease]',
-          'hover:bg-hover hover:border-foreground/22',
+          'verification-code-chip flex w-full items-center justify-between gap-6 py-3 pr-3 pl-4 rounded-xl border',
+          'border-solid border-border-strong bg-surface text-left transition-[background,border-color] duration-120',
+          'ease-[ease] hover:bg-hover hover:border-foreground/22',
         )}
         onClick={copy}
         title="Copy verification code"
       >
-        <span className="text-[11px] text-muted">Verification code</span>
-        <span className="select-text font-mono text-[18px] font-medium tracking-[0.12em] tabular-nums text-foreground">
-          {code}
+        <span className="flex flex-col gap-1 min-w-0">
+          <span className="text-[11px] text-muted">Verification code</span>
+          <span className="select-text font-mono text-[22px] leading-none font-medium tracking-[0.14em] tabular-nums text-foreground">
+            {code}
+          </span>
         </span>
         <span
           className={cn(
-            'inline-flex items-center gap-1.5 text-[11px]',
+            'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-hover text-[12px] font-medium shrink-0',
             status === 'copied' ? 'text-success' : 'text-secondary',
           )}
         >
-          {status === 'copied' ? <Check size={13} /> : <Copy size={13} />}
+          {status === 'copied' ? <Check size={14} /> : <Copy size={14} />}
           {status === 'copied' ? 'Copied' : 'Copy'}
           {status === 'idle' && <ShortcutHint id="copyCode" />}
         </span>
