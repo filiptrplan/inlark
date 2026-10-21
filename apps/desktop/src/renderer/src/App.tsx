@@ -101,6 +101,7 @@ import { addToCalendar } from './EventSuggestion'
 import { signatureBlock, signatureText } from './signature'
 import { textSignatureMarker } from './composer-document'
 import { selectConversation } from './selection'
+import { useVisualSelection } from './visual-selection'
 import {
   ignoreInputsForCommand,
   sameBinding,
@@ -982,6 +983,13 @@ export function App() {
   const inList = !blocked && !route.thread
   const inThread = !blocked && !!route.thread && !!latest
   const inMailList = inList && view !== 'drafts'
+  const { visual, toggleVisual } = useVisualSelection({
+    conversations,
+    focused,
+    selected,
+    setSelected,
+    active: inMailList,
+  })
   const toggleUnread = () =>
     setFilters((current) => ({ ...current, unread: current.unread ? undefined : true }))
   const toggleDensity = () =>
@@ -1043,6 +1051,7 @@ export function App() {
         },
         enabled: inList,
       },
+      visualSelect: { run: toggleVisual, enabled: inMailList },
       selectAll: {
         run: () => {
           if (view === 'drafts')
@@ -1946,7 +1955,7 @@ export function App() {
                     className="selection-count text-[12px] text-foreground font-medium tabular-nums"
                     role="status"
                   >
-                    {selectedCount.toLocaleString()} selected
+                    {selectedCount.toLocaleString()} selected{visual && ' · Visual'}
                   </span>
                   {!allMatching && total > selected.size && (
                     <button

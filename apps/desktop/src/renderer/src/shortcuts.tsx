@@ -93,6 +93,13 @@ export const shortcutDefinitions = [
   { id: 'undo', section: 'Organize', label: 'Undo last action', defaults: [['Z'], ['Mod+Z']] },
   { id: 'select', section: 'Select', label: 'Select conversation', defaults: [['X'], ['Space']] },
   { id: 'selectRange', section: 'Select', label: 'Select a range', defaults: [['Shift+X']] },
+  {
+    id: 'visualSelect',
+    section: 'Select',
+    label: 'Visual line select',
+    description: 'Move to extend the selection; press again to stop.',
+    defaults: [['Shift+V']],
+  },
   { id: 'selectAll', section: 'Select', label: 'Select all loaded', defaults: [['Mod+A']] },
   { id: 'compose', section: 'Write', label: 'Compose', defaults: [['C']] },
   { id: 'reply', section: 'Write', label: 'Reply', defaults: [['R']] },
