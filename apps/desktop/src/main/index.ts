@@ -18,6 +18,7 @@ import { JsonStore } from './storage'
 import { MailService } from './service'
 import { imapProviders } from './imap-accounts'
 import { openWorkerIndex } from './imap-index/open'
+import { attachLinkContextMenu } from './link-context-menu'
 import { discover } from './discovery-transport'
 import { SenderAvatarResolver } from './sender-avatar'
 import { UpdateManager } from './updates'
@@ -153,6 +154,7 @@ function createWindow() {
     void service.openExternal(url).catch(() => {})
     return { action: 'deny' }
   })
+  attachLinkContextMenu(window.webContents)
   // Vite reloads the page after some edits; keep those reloads in the app window.
   const isDevReload = (event: { url: string; isMainFrame: boolean }) =>
     !!devURL && event.isMainFrame && new URL(event.url).origin === new URL(devURL).origin
