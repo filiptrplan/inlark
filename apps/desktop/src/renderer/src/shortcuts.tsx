@@ -73,6 +73,13 @@ export const shortcutDefinitions = [
     label: 'Unsubscribe from mailing list',
     defaults: [['Mod+U']],
   },
+  {
+    id: 'addToCalendar',
+    section: 'Organize',
+    label: 'Add event to calendar',
+    description: 'From an event in the open conversation.',
+    defaults: [['Shift+D']],
+  },
   { id: 'star', section: 'Organize', label: 'Star or unstar', defaults: [['S']] },
   { id: 'unread', section: 'Organize', label: 'Mark as unread', defaults: [['U'], ['Shift+U']] },
   { id: 'read', section: 'Organize', label: 'Mark as read', defaults: [['Shift+I']] },

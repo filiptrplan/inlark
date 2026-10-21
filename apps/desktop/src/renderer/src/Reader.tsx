@@ -56,6 +56,7 @@ import { ShortcutHint, useShortcutText } from './shortcuts'
 import { emailBodyHtml, emailSanitizeOptions } from './email-html'
 import { offersAction } from './view-actions'
 import { SecuritySummary, WithheldBody, withheld } from './MessageSecurity'
+import { EventSuggestion } from './EventSuggestion'
 
 const formatAddress = (a: { name: string; email: string }) =>
   a.name ? a.name + ' <' + a.email + '>' : a.email
@@ -1108,6 +1109,7 @@ export function Reader({
                       {!loading && !(message.security && withheld(message.security)) && (
                         <AuthAction key={message.id} message={message} />
                       )}
+                      <EventSuggestion message={message} />
                       <EmailBody
                         message={message}
                         remoteImages={settings.remoteImages}
