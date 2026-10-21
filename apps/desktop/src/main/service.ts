@@ -1851,7 +1851,7 @@ export class MailService {
     await this.persistStaging()
     return attachments
   }
-  private async attachmentBytes(accountId: string, attachment: Attachment): Promise<Uint8Array> {
+  async attachmentBytes(accountId: string, attachment: Attachment): Promise<Uint8Array> {
     if (attachment.blobId.startsWith('decrypted:')) {
       const data = this.encryption.attachments.get(attachment.blobId)
       if (!this.encryption.vault.unlocked || data?.accountId !== accountId)

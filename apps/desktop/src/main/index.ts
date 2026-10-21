@@ -24,6 +24,7 @@ import { SenderAvatarResolver } from './sender-avatar'
 import { UpdateManager } from './updates'
 import { configureAppIdentity } from './app-identity'
 import { startMcp } from './mcp'
+import { startCalendarInvites } from './calendar-invite'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 protocol.registerSchemesAsPrivileged([
@@ -267,6 +268,7 @@ else {
       })
       await service.init()
       startMcp(service)
+      startCalendarInvites(service)
       // Native surfaces such as the window controls and menus follow inlark's theme setting.
       nativeTheme.themeSource = service.settings.theme
       nativeTheme.on('updated', followTheme)
