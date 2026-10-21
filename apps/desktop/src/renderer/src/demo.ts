@@ -30,6 +30,7 @@ import {
 } from '@inlark/core'
 import { longDate } from './mail-date'
 import { version as packagedVersion } from '../../../package.json'
+import { demoEventMail } from './demo-events'
 
 const names = ['Personal', 'Studio', 'Projects', 'Community', 'Archive']
 const emails = [
@@ -74,6 +75,7 @@ export const demoAccounts: Account[] = names.map((name, i) => ({
   ...demoStates[i],
 }))
 const catalog = [
+  ...demoEventMail,
   [
     'GitHub',
     'notifications@github.com',
