@@ -47,7 +47,7 @@ import type {
   IndexedMessage,
   MetadataIndex,
 } from './metadata-index'
-import { composeMime, parseMime } from './mime'
+import { composeMime, decodeText, parseMime } from './mime'
 import type { ImapPort, ImapServerOptions, PortFactory, SearchCriteria } from './port'
 import { submitSmtp, verifySmtp, type SmtpSettings } from './smtp'
 
@@ -692,7 +692,7 @@ export class ImapProvider implements MailProvider {
           if (!part) continue
           try {
             const bytes = await port.download(row.uid, partSection(part), 4096, true)
-            const preview = previewText(new TextDecoder().decode(bytes), part === html)
+            const preview = previewText(decodeText(bytes, part.parameters?.charset), part === html)
             if (preview) await this.index.setPreview(this.accountId, row.id, preview)
           } catch {
             // A missing preview is harmless; the body loads when the message opens.
@@ -932,8 +932,9 @@ export class ImapProvider implements MailProvider {
       const { html, text } = textParts(row.bodyStructure)
       const read = async (part?: typeof html) =>
         part
-          ? new TextDecoder().decode(
+          ? decodeText(
               await port.download(row.uid, partSection(part), partLimit, true),
+              part.parameters?.charset,
             )
           : ''
       body = { html: await read(html), text: await read(text) }

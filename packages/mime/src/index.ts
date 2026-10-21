@@ -1,5 +1,6 @@
 import MailComposer from 'nodemailer/lib/mail-composer'
-import { simpleParser, type AddressObject } from 'mailparser'
+import type { AddressObject } from 'mailparser'
+import { parseTolerant } from './charset'
 import { parseUnsubscribe, ProviderError, type Address } from '@inlark/core'
 
 export interface ComposeInput {
@@ -46,6 +47,7 @@ export interface ParsedMime {
   unsubscribe?: { url: string; oneClick: boolean }
 }
 
+export { decodeText } from './charset'
 export const defaultMaxMimeBytes = 64 * 1024 * 1024
 
 const bracketed = (id: string) => `<${id.trim().replace(/^<|>$/g, '')}>`
@@ -110,7 +112,7 @@ export async function parseMime(
   const maxBytes = options.maxBytes ?? defaultMaxMimeBytes
   if (source.byteLength > maxBytes)
     throw new ProviderError('tooLarge', 'This message is too large to open.')
-  const mail = await simpleParser(
+  const mail = await parseTolerant(
     Buffer.from(source.buffer, source.byteOffset, source.byteLength),
     { skipTextToHtml: true, skipTextLinks: true, skipImageLinks: true, keepCidLinks: true },
   )
