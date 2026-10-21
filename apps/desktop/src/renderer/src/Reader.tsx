@@ -55,6 +55,7 @@ import { emailBodyHtml, emailSanitizeOptions } from './email-html'
 import { offersAction } from './view-actions'
 import { SecuritySummary, WithheldBody, withheld } from './MessageSecurity'
 import { VerificationCodeChip } from './VerificationCode'
+import { EventSuggestion } from './EventSuggestion'
 
 const formatAddress = (a: { name: string; email: string }) =>
   a.name ? a.name + ' <' + a.email + '>' : a.email
@@ -1041,6 +1042,7 @@ export function Reader({
                   {open && (
                     <div className="message-content pt-6 pb-[2px] pr-0 pl-11.75 @max-[680px]/mail:pl-0">
                       <VerificationCodeChip message={message} />
+                      <EventSuggestion message={message} />
                       <EmailBody
                         message={message}
                         remoteImages={settings.remoteImages}

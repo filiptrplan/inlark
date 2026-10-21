@@ -96,6 +96,8 @@ import {
 } from './AppDialogs'
 import { messageText } from './message-text'
 import { copyVerificationCode, latestVerificationCode } from './verification-code'
+import { latestEvent } from './event-detect'
+import { addToCalendar } from './EventSuggestion'
 import { signatureBlock, signatureText } from './signature'
 import { textSignatureMarker } from './composer-document'
 import { selectConversation } from './selection'
@@ -928,6 +930,7 @@ export function App() {
   const listMessage = thread.data && [...thread.data].reverse().find((m) => m.unsubscribe)
   const listKey = listMessage && scopeKey(listMessage.accountId, listMessage.id)
   const verification = thread.data && latestVerificationCode(thread.data)
+  const upcomingEvent = thread.data && latestEvent(thread.data)
   const unsubscribeState: UnsubscribeState | undefined = listKey
     ? unsubscribes.get(listKey) || 'available'
     : undefined
@@ -1075,6 +1078,14 @@ export function App() {
             () => notify('Couldn’t copy the code', 'error'),
           ),
         enabled: inThread && !!verification,
+      },
+      addToCalendar: {
+        run: () =>
+          upcomingEvent &&
+          void addToCalendar(upcomingEvent.event).catch(() =>
+            notify('Couldn’t open the calendar', 'error'),
+          ),
+        enabled: inThread && !!upcomingEvent,
       },
       goInbox: { run: () => go({ view: 'inbox' }) },
       goStarred: { run: () => go({ view: 'starred' }) },
