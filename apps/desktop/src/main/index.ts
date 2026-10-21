@@ -27,6 +27,7 @@ import { discover } from './discovery-transport'
 import { SenderAvatarResolver } from './sender-avatar'
 import { UpdateManager } from './updates'
 import { configureAppIdentity } from './app-identity'
+import { startCalendarInvites } from './calendar-invite'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 protocol.registerSchemesAsPrivileged([
@@ -273,6 +274,7 @@ else {
         discover,
       })
       await service.init()
+      startCalendarInvites(service)
       startup = new StartupManager({
         app,
         store: new JsonStore(join(app.getPath('userData'), 'mail')),
