@@ -95,6 +95,7 @@ import {
   type FolderDialogState,
 } from './AppDialogs'
 import { messageText } from './message-text'
+import { copyVerificationCode, latestVerificationCode } from './verification-code'
 import { signatureBlock, signatureText } from './signature'
 import { textSignatureMarker } from './composer-document'
 import { selectConversation } from './selection'
@@ -926,6 +927,7 @@ export function App() {
   // The newest mailing-list message carries the sender's current unsubscribe address.
   const listMessage = thread.data && [...thread.data].reverse().find((m) => m.unsubscribe)
   const listKey = listMessage && scopeKey(listMessage.accountId, listMessage.id)
+  const verification = thread.data && latestVerificationCode(thread.data)
   const unsubscribeState: UnsubscribeState | undefined = listKey
     ? unsubscribes.get(listKey) || 'available'
     : undefined
@@ -1064,6 +1066,15 @@ export function App() {
       unsubscribe: {
         run: () => void unsubscribe(),
         enabled: !blocked && unsubscribeState === 'available',
+      },
+      copyCode: {
+        run: () =>
+          verification &&
+          void copyVerificationCode(verification.code).then(
+            () => notify('Copied ' + verification.code),
+            () => notify('Couldn’t copy the code', 'error'),
+          ),
+        enabled: inThread && !!verification,
       },
       goInbox: { run: () => go({ view: 'inbox' }) },
       goStarred: { run: () => go({ view: 'starred' }) },
