@@ -73,6 +73,13 @@ export const shortcutDefinitions = [
     label: 'Unsubscribe from mailing list',
     defaults: [['Mod+U']],
   },
+  {
+    id: 'copyCode',
+    section: 'Organize',
+    label: 'Copy verification code',
+    description: 'From a recent message in the open conversation.',
+    defaults: [['Y']],
+  },
   { id: 'star', section: 'Organize', label: 'Star or unstar', defaults: [['S']] },
   { id: 'unread', section: 'Organize', label: 'Mark as unread', defaults: [['U'], ['Shift+U']] },
   { id: 'read', section: 'Organize', label: 'Mark as read', defaults: [['Shift+I']] },
