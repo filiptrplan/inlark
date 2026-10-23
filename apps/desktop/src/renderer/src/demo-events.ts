@@ -7,15 +7,15 @@ const inDays = (days: number) => {
 
 export const demoEventMail = [
   [
-    'Adriatic Air',
-    'bookings@adriatic.example',
+    'Lufthansa',
+    'booking@lufthansa.com',
     'Your booking is confirmed: Ljubljana to Frankfurt',
     `Your flight departs on ${inDays(21)} at 07:40 from Ljubljana Airport. Boarding closes at 07:10.`,
     'notifications',
   ],
   [
     'Cankarjev dom',
-    'tickets@cankarjev-dom.example',
+    'tickets@cd-cc.si',
     'Your tickets for Sunday Night Jazz',
     `Doors open at 19:30 on ${inDays(9)}. Please bring your tickets in the app or printed.`,
     'notifications',
