@@ -28,6 +28,7 @@ import { SenderAvatarResolver } from './sender-avatar'
 import { UpdateManager } from './updates'
 import { configureAppIdentity } from './app-identity'
 import { startCalendarInvites } from './calendar-invite'
+import { startDraftMoves } from './draft-move'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 protocol.registerSchemesAsPrivileged([
@@ -275,6 +276,7 @@ else {
       })
       await service.init()
       startCalendarInvites(service)
+      startDraftMoves(service)
       startup = new StartupManager({
         app,
         store: new JsonStore(join(app.getPath('userData'), 'mail')),

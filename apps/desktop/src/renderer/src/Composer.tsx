@@ -49,6 +49,7 @@ import {
 } from './shortcuts'
 import { SignatureNode } from './signature'
 import { linkTarget } from './link-target'
+import { draftsBridge } from './draft-move'
 import { SignatureParagraph, hasDraftContent, replaceSignature } from './composer-document'
 
 /** One From choice: an account and one of its sending addresses. */
@@ -175,8 +176,8 @@ export function Composer({
       [accounts.length > 1 && a.name, name ? name + ' <' + email + '>' : email]
         .filter(Boolean)
         .join(' · ')
-    // A draft saved on the server belongs to its account; only its address can change.
-    const disabled = a.id !== draft.accountId && !!draft.serverId
+    // Without the move bridge, a draft saved on the server keeps its account.
+    const disabled = a.id !== draft.accountId && !!draft.serverId && !draftsBridge()
     const list = senders[index]?.data
     if (!list?.length) {
       const identityId = a.id === draft.accountId ? draft.identityId : ''
@@ -524,16 +525,28 @@ export function Composer({
     })
   }
   const selectAccount = async (accountId: string, identityId?: string) => {
-    if (lockedRef.current || latest.current.serverId || accountId === latest.current.accountId)
-      return
+    const bridge = draftsBridge()
+    if (lockedRef.current || accountId === latest.current.accountId) return
+    if (latest.current.serverId && !bridge) return
     setChangingFrom(true)
     try {
       const identities = await api.identities(accountId)
       await sync.current
       // A sync already underway may have bound the draft to its original account.
-      if (!alive.current || latest.current.serverId) return
+      if (!alive.current || (latest.current.serverId && !bridge)) return
       if (!identities.length) throw new Error('This account has no permitted sending identities.')
-      selectIdentity(identities.find((i) => i.id === identityId) || identities[0])
+      const identity = identities.find((i) => i.id === identityId) || identities[0]
+      if (latest.current.serverId && bridge) {
+        // Saves to the new account first; the old server copy goes only once that worked.
+        const moved = await bridge.move(latest.current, accountId, identity.id)
+        if (!alive.current) return
+        latest.current = moved.draft
+        setDraft(moved.draft)
+        await localSaveDraft(moved.draft)
+        onSaved()
+        if (moved.warning) notify(moved.warning, 'error')
+      }
+      selectIdentity(identity)
     } catch (error) {
       notify(friendlyError(error), 'error')
     } finally {

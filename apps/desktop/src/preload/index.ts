@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { DesktopMailAPI, AppEvent } from '@inlark/core'
 import './calendar'
+import './drafts'
 const methods = [
   'startupStatus',
   'setStartup',

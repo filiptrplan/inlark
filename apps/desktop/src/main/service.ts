@@ -52,6 +52,7 @@ import { remoteImageData } from './remote-image'
 import { SenderAvatarResolver, rasterType } from './sender-avatar'
 import { planMutation, safeUndoUpdates, undoForUpdated, type UndoEntry } from './mail-mutations'
 import { JsonStore, encryptSecret, decryptSecret, secureStorageAvailable } from './storage'
+import { moveDraft as moveDraftAcross } from './draft-move'
 
 export type Connection = {
   id: string
@@ -1326,6 +1327,43 @@ export class MailService {
     if (result.failures.length)
       throw new Error('Your new draft is saved. The previous server copy could not be removed.')
   }
+  /** Fork seam: lends the move in draft-move.ts the private draft state it needs. */
+  moveDraft = (draft: Draft, accountId: string, identityId: string) =>
+    moveDraftAcross(
+      {
+        save: this.saveDraft,
+        sync: this.syncDraft,
+        identities: this.identities,
+        accountName: (id) => this.account(id).name,
+        busy: this.busyDrafts,
+        serverCopy: async (d) => {
+          const { provider, account } = this.provider(d.accountId)
+          const [remote] = await this.serverMessages(
+            provider,
+            account,
+            [d.serverId!],
+            true,
+            d.encryption === 'encrypt',
+          )
+          if (!remote) return 'missing'
+          return remote.keywords.$draft && draftFingerprint(remote) === d.serverFingerprint
+            ? 'unchanged'
+            : 'changed'
+        },
+        removeServerCopy: (d) => {
+          const { provider, account } = this.provider(d.accountId)
+          return this.removePreviousDraft(provider, account, d)
+        },
+        replace: async (d) => {
+          this.localDrafts.set(d.id, d)
+          await this.persistDrafts()
+        },
+        changed: (accountId) => this.emit({ type: 'changed', accountId }),
+      },
+      draft,
+      accountId,
+      identityId,
+    )
   private async completeDraft(draft: Draft) {
     // Keep a minimal tombstone so a stale renderer copy cannot reappear after a crash.
     this.localDrafts.set(draft.id, {
