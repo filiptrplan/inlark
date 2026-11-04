@@ -1,11 +1,11 @@
 ---
 name: ship
-description: Commit the current changes, push to origin, and bump the inlark input in the user's nix flake (~/nix). Use when the user says "ship it", "commit, push and update nix", or asks to roll a change out to their NixOS/home-manager setup.
+description: Commit the current changes, push to origin, bump the inlark input in the user's nix flake (~/nix), and install it with `hs`. Use when the user says "ship it", "commit, push and update nix", or asks to roll a change out to their NixOS/home-manager setup.
 ---
 
 # Ship inlark
 
-Commits, pushes, and bumps the `inlark` flake input in `~/nix` so the change reaches the user's machines on the next rebuild.
+Commits, pushes, bumps the `inlark` flake input in `~/nix`, and runs `hs` so the change is installed on this machine.
 
 ## Steps
 
@@ -17,10 +17,11 @@ Commits, pushes, and bumps the `inlark` flake input in `~/nix` so the change rea
    Do not push until the build succeeds.
 3. **Push.** `git push` on the current branch. The nix input tracks `github:filiptrplan/inlark` (default branch), so only a push to `main` is picked up. If on another branch, say so and stop before step 4.
 4. **Bump nix.** From `~/nix` run `nix flake update inlark`. It must run after the push, since the lock pins the pushed commit hash. Confirm the output shows the new commit.
-5. **Report.** State the old and new commit, that `~/nix/flake.lock` is modified, and that nothing was committed there or rebuilt.
+5. **Install.** Run `hs` (a per-host `home-manager switch` script; inlark is a home-manager package, so no root and no `ns` is needed). Confirm the new store path from `readlink -f "$(command -v inlark)"`. The running inlark keeps the old build until it restarts, so don't quit it yourself, since the user may be mid-edit; tell them to restart it.
+6. **Report.** State the old and new commit, that `~/nix/flake.lock` is modified but not committed, the installed store path, and that inlark needs a restart.
 
 ## Boundaries
 
-- Never commit or push in `~/nix`, and never run `home-manager switch` or `nixos-rebuild`. The user does those. Mention that a rebuild is needed.
+- Never commit or push in `~/nix`. Run `hs` for the install, but never `nixos-rebuild` or `ns`; those need root and are the user's.
 - Update only the `inlark` input, never a bare `nix flake update`.
 - If the push is rejected or the tree has unrelated uncommitted changes, stop and ask.
