@@ -266,6 +266,7 @@ export const ipcSchemas = {
   updateAccountDetails: z.tuple([id, accountDetailsSchema]),
   setAliases: z.tuple([id, aliasesSchema]),
   mailboxes: z.tuple([id]),
+  syncMail: z.tuple([]),
   identities: z.tuple([id]),
   query: z.tuple([querySchema, z.record(z.string(), z.number().int().nonnegative()).optional()]),
   conversation: z.tuple([id, id]),

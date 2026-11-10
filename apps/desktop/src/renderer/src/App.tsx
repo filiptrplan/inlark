@@ -384,6 +384,23 @@ export function App() {
       ),
     )
   }
+  const [checking, setChecking] = useState(false)
+  const checkingRef = useRef(false)
+  /** The user asked for new mail: ask the servers, not only the local copy. */
+  const checkMail = async () => {
+    if (checkingRef.current) return
+    checkingRef.current = true
+    setChecking(true)
+    try {
+      await api.syncMail()
+    } catch (error) {
+      fail(error)
+    } finally {
+      checkingRef.current = false
+      setChecking(false)
+    }
+    await refresh()
+  }
   const act = async (
     action: MailAction,
     explicit?: MutationTarget[],
@@ -1006,7 +1023,7 @@ export function App() {
       compose: { run: () => void compose() },
       search: { run: focusSearch },
       refresh: {
-        run: () => void refresh(),
+        run: () => void checkMail(),
         enabled: true,
         // F5 must refresh mail instead of reloading the app even when search has focus.
         // Keep custom letter bindings quiet while typing; modifier chords remain available.
@@ -1291,7 +1308,7 @@ export function App() {
       icon: RefreshCw,
       key: keys('refresh'),
       keywords: 'refresh sync reload',
-      run: () => void refresh(),
+      run: () => void checkMail(),
     },
     ...(view !== 'drafts' && !route.thread
       ? [
@@ -1752,12 +1769,13 @@ export function App() {
                 <IconButton
                   label="Refresh mail"
                   shortcut={keys('refresh')}
-                  onClick={() => void refresh()}
+                  onClick={() => void checkMail()}
                 >
                   <RefreshCw
                     size={15}
                     className={cn(
-                      mail.isFetching && !mail.isFetchingNextPage && 'spin animate-spin',
+                      (checking || (mail.isFetching && !mail.isFetchingNextPage)) &&
+                        'spin animate-spin',
                     )}
                   />
                 </IconButton>
@@ -2107,7 +2125,7 @@ export function App() {
                 {mail.isError
                   ? friendlyError(mail.error)
                   : 'Some accounts are unavailable. Showing mail from connected accounts.'}
-                <button onClick={() => void refresh()}>Retry</button>
+                <button onClick={() => void checkMail()}>Retry</button>
               </div>
             )}
             {!!incomplete.length && view !== 'drafts' && (

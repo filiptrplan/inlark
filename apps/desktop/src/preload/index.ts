@@ -32,6 +32,7 @@ const methods = [
   'updateAccountDetails',
   'setAliases',
   'mailboxes',
+  'syncMail',
   'identities',
   'query',
   'conversation',

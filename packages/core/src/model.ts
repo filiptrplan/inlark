@@ -463,6 +463,11 @@ export interface MailProvider {
   /** Releases resources asynchronously, e.g. closing a local index before its files are removed. */
   close?(): Promise<void>
   mailboxes(account: Account): Promise<Mailbox[]>
+  /**
+   * Checks the server for changes now and resolves once `query` reflects them. Only for providers
+   * that answer queries from a local copy; the others are always current.
+   */
+  syncNow?(account: Account): Promise<void>
   identities(account: Account): Promise<Identity[]>
   query(
     account: Account,
@@ -679,6 +684,8 @@ export interface DesktopMailAPI {
   /** Replaces an IMAP account's aliases. The provider must already deliver and accept them. */
   setAliases(accountId: string, aliases: AliasInput[]): Promise<Account[]>
   mailboxes(accountId: string): Promise<Mailbox[]>
+  /** Reconnects interrupted accounts and checks every account's server for new mail now. */
+  syncMail(): Promise<void>
   identities(accountId: string): Promise<Identity[]>
   query(query: MailQuery, cursor?: Record<string, number>): Promise<QueryPage>
   conversation(accountId: string, threadId: string): Promise<Message[]>

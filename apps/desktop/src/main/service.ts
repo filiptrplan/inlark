@@ -2229,6 +2229,25 @@ export class MailService {
       }
     }
   }
+  /** The user asked for new mail: reconnect, then wait until each local copy has caught up. */
+  syncMail = async () => {
+    await this.refresh()
+    await Promise.allSettled(
+      this.accounts
+        .filter((a) => a.status === 'connected')
+        .map((a) =>
+          this.guard(a.id, async (p, account) => {
+            if (!p.syncNow) return
+            // Never hold the user's refresh hostage to a slow server; the sync finishes anyway.
+            let timer: ReturnType<typeof setTimeout> | undefined
+            await Promise.race([
+              p.syncNow(account),
+              new Promise((resolve) => (timer = setTimeout(resolve, 30_000))),
+            ]).finally(() => clearTimeout(timer))
+          }),
+        ),
+    )
+  }
   async refresh() {
     await Promise.allSettled(
       this.connections.map(async (c) => {

@@ -1051,6 +1051,7 @@ export const demoAPI: DesktopMailAPI = {
   },
   disconnect: async () => {},
   reconnect: async () => {},
+  syncMail: async () => {},
   updateAccount: async (accountId, appearance) => {
     const account = demoAccounts.find((a) => a.id === accountId)
     if (!account) throw new Error('Account not found.')

@@ -140,6 +140,7 @@ export class ImapProvider implements MailProvider {
   private started = false
   private wakeLoop?: () => void
   private pending: 'none' | 'inbox' | 'all' = 'none'
+  private syncWaiters: { resolve: () => void; reject: (error: unknown) => void }[] = []
   private lastSync = 0
   private lastFull = new Map<string, number>()
   private uidLists = new Map<string, number[]>()
@@ -430,6 +431,15 @@ export class ImapProvider implements MailProvider {
     if (this.pending !== 'all') this.pending = scope
     this.wakeLoop?.()
   }
+  /** Checks every folder on the server now and resolves once the index reflects what it found. */
+  syncNow(): Promise<void> {
+    if (this.disposed) return Promise.reject(new ProviderError('offline', 'Account disconnected.'))
+    if (!this.started) return this.syncPass('all')
+    return new Promise<void>((resolve, reject) => {
+      this.syncWaiters.push({ resolve, reject })
+      this.requestSync('all')
+    })
+  }
   private wait(ms: number) {
     return new Promise<void>((resolve) => {
       const timer = setTimeout(done, ms)
@@ -443,10 +453,13 @@ export class ImapProvider implements MailProvider {
   private async syncLoop() {
     let failures = 0
     while (!this.disposed) {
+      // Only a pass that starts after a request can answer it; one already running may miss mail.
+      const waiting = this.syncWaiters.splice(0)
       try {
         const scope = this.pending === 'none' ? 'all' : this.pending
         this.pending = 'none'
         await this.syncPass(scope)
+        for (const waiter of waiting) waiter.resolve()
         failures = 0
         this.setState('connected')
         let more = true
@@ -454,6 +467,7 @@ export class ImapProvider implements MailProvider {
           more = await this.historicalBatch()
         if (!this.disposed && this.pending === 'none') await this.wait(this.timing.reconcileMs)
       } catch (error) {
+        for (const waiter of waiting) waiter.reject(error)
         if (this.disposed) break
         if (isProviderError(error, 'authentication')) this.setState('authentication', error.message)
         else if (isProviderError(error, 'network', 'tls', 'certificate'))
@@ -1386,6 +1400,8 @@ export class ImapProvider implements MailProvider {
   dispose() {
     this.disposed = true
     this.wakeLoop?.()
+    for (const waiter of this.syncWaiters.splice(0))
+      waiter.reject(new ProviderError('offline', 'Account disconnected.'))
     for (const task of this.queue.splice(0))
       task.reject(new ProviderError('offline', 'Account disconnected.'))
     for (const port of [this.command, this.idle]) void port?.close().catch(() => {})

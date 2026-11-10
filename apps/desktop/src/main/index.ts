@@ -345,6 +345,7 @@ else {
         updateAccountDetails: service.updateAccountDetails,
         setAliases: service.setAliases,
         mailboxes: service.mailboxes,
+        syncMail: service.syncMail,
         identities: service.identities,
         query: service.query,
         conversation: service.conversation,
