@@ -134,6 +134,16 @@ describe('findTextEvent', () => {
     expect(findTextEvent(text, subject, received)).toMatchObject({ start, source: 'text' })
   })
 
+  it('reads a confirmed interview with a named time zone', () => {
+    expect(
+      findTextEvent(
+        'Your interview is now confirmed for Wednesday, November 18, 10:00am GMT (London time). Please use the following link to join your interview.',
+        'Interview confirmation',
+        received,
+      ),
+    ).toMatchObject({ start: '2026-11-18T10:00:00+00:00', allDay: false, source: 'text' })
+  })
+
   it('pairs check-in and check-out into one stay', () => {
     const event = findTextEvent(
       'Your reservation is confirmed.\nCheck-in: 3 December 2026\nCheck-out: 5 December 2026',

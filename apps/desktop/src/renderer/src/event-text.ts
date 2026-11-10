@@ -11,6 +11,7 @@ const keyword = new RegExp(
   [
     'flight|depart|arriv|boarding|check[- ]?in|check[- ]?out|booking|reservation|itinerary|ticket',
     'event|concert|doors|venue|appointment|meeting|webinar|conference|starts?\\b|takes place|invit',
+    'interview|call\\b|(?:scheduled|confirmed|booked) for|vorstellungsgespräch|razgovor|entretien|entrevista',
     'termin|einladung|flug|abflug|buchung|reservierung|veranstaltung',
     'rezervacij|vstopnic|let\\b|prihod|odhod|dogodek|sestanek',
     'vol\\b|départ|réservation|billet|vuelo|reserva|entrada|vlucht|boeking|voo|bilhete',
@@ -74,6 +75,8 @@ export function findTextEvent(
     if (!line || unrelated.test(line)) continue
     const near = lines.slice(Math.max(0, index - 2), index + 1).filter(Boolean)
     for (const result of parseLine(line, reference)) {
+      // "is now confirmed" names the moment of writing, not the event.
+      if (/^(?:right )?now$/i.test(result.text.trim())) continue
       const start = when(result.start)
       if (!start) continue
       const ms = Date.parse(start.value.slice(0, 10))
