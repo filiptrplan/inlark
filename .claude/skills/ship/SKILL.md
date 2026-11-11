@@ -14,7 +14,7 @@ Commits, pushes, bumps the `inlark` flake input in `~/nix`, and runs `hs` so the
    - `ERR_PNPM_BROKEN_LOCKFILE`: `pnpm-lock.yaml` was hand-edited. Never edit the lockfile by hand. Restore the last good version and regenerate it with `pnpm install --lockfile-only`.
    - `ERR_PNPM_NO_OFFLINE_TARBALL`: dependencies changed, so `pnpmDeps.hash` in `nix/package.nix` is stale. Set it to `""`, rebuild, and copy the `got: sha256-…` value back.
    - Test or typecheck failures: fix them and commit the fix separately.
-   Do not push until the build succeeds.
+     Do not push until the build succeeds.
 3. **Push.** `git push` on the current branch. The nix input tracks `github:filiptrplan/inlark` (default branch), so only a push to `main` is picked up. If on another branch, say so and stop before step 4.
 4. **Bump nix.** From `~/nix` run `nix flake update inlark`. It must run after the push, since the lock pins the pushed commit hash. Confirm the output shows the new commit.
 5. **Install.** Run `hs` (a per-host `home-manager switch` script; inlark is a home-manager package, so no root and no `ns` is needed). Confirm the new store path from `readlink -f "$(command -v inlark)"`. The running inlark keeps the old build until it restarts, so don't quit it yourself, since the user may be mid-edit; tell them to restart it.
