@@ -2,6 +2,9 @@ import { afterEach, expect, it } from 'vitest'
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { once } from 'node:events'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { requestBackground } from '../apps/desktop/src/main/startup-portal'
 
 // Exercise real D-Bus serialization, match registration and an immediate portal
@@ -22,9 +25,31 @@ afterEach(() => {
 it.skipIf(process.platform !== 'linux')(
   'waits for the Flatpak portal Response and honors grant, refusal and disabling',
   async () => {
-    const daemon = spawn('dbus-daemon', ['--session', '--nofork', '--print-address=1'], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
+    // A config of its own, since sandboxed builds such as Nix's have no /etc/dbus-1/session.conf.
+    const directory = mkdtempSync(join(tmpdir(), 'inlark-dbus-'))
+    cleanup.push(() => rmSync(directory, { recursive: true, force: true }))
+    const config = join(directory, 'session.conf')
+    writeFileSync(
+      config,
+      `<busconfig>
+  <type>session</type>
+  <listen>unix:dir=${directory}</listen>
+  <auth>EXTERNAL</auth>
+  <policy context="default">
+    <allow send_destination="*" eavesdrop="true"/>
+    <allow eavesdrop="true"/>
+    <allow own="*"/>
+  </policy>
+</busconfig>
+`,
+    )
+    const daemon = spawn(
+      'dbus-daemon',
+      ['--config-file=' + config, '--nofork', '--print-address=1'],
+      {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    )
     cleanup.push(() => daemon.kill())
     const address = await new Promise<string>((resolve, reject) => {
       daemon.once('error', reject)
